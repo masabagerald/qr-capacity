@@ -1,10 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+  <title>QR Code Generator</title>
+  <!-- Add Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/css/bootstrap.min.css">
+  <style>
+    .qrcode-container {
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 <body>
-$END$
+<div class="container">
+  <h1>QR Code Generator</h1>
+  <div class="row">
+    <div class="col-md-6">
+      <form id="qr-form" >
+        <div class="form-group">
+          <label for="text">Text:</label>
+          <input type="text" class="form-control" id="text" placeholder="Enter text" required>
+        </div>
+        <div class="form-group">
+          <label for="size">Size:</label>
+          <input type="number" class="form-control" id="size" placeholder="Enter size" min="100" max="1000" required>
+        </div>
+        <div class="form-group">
+          <label for="color">Color:</label>
+          <input type="color" class="form-control" id="color" value="#000000" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate QR Code</button>
+      </form>
+    </div>
+    <div class="col-md-6">
+      <div class="qrcode-container">
+        <div id="qrcode"></div>
+        <p id="qrcode-text" class="mt-2"></p>
+      </div>
+      <h3>Recently Generated QR Codes</h3>
+      <table class="table table-striped">
+        <thead>
+        <tr>
+          <th>Text</th>
+          <th>Size</th>
+          <th>Color</th>
+        </tr>
+        </thead>
+        <tbody id="recent-qrcodes">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add jQuery and QRCode.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js"></script>
+
+<script>
+  $(document).ready(function() {
+    var recentQRCodes = [];
+
+    function displayRecentQRCodes() {
+      var tableBody = $('#recent-qrcodes');
+      tableBody.empty();
+
+      for (var i = recentQRCodes.length - 1; i >= 0; i--) {
+        var qrcode = recentQRCodes[i];
+        var row = '<tr>' +
+                '<td>' + qrcode.text + '</td>' +
+                '<td>' + qrcode.size + '</td>' +
+                '<td><div class="color-swatch" style="background-color: ' + qrcode.color + '"></div></td>' +
+                '</tr>';
+        tableBody.append(row);
+      }
+    }
+
+    $('form').submit(function(event) {
+      event.preventDefault();
+      var text = $('#text').val();
+      var size = parseInt($('#size').val());
+      var color = $('#color').val();
+
+      $('#qrcode').empty().qrcode({
+        text: text,
+        width: size,
+        height: size,
+        colorDark: color
+      });
+
+      var qrcodeData = {
+        text: text,
+        size: size,
+        color: color
+      };
+
+      recentQRCodes.push(qrcodeData);
+      if (recentQRCodes.length > 5) {
+        recentQRCodes.shift();
+      }
+
+      displayRecentQRCodes();
+      $('#qrcode-text').text('Text: ' + text);
+      $('#qr-form')[0].reset();
+    });
+
+    displayRecentQRCodes();
+  });
+</script>
 </body>
 </html>
