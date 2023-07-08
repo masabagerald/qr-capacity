@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -39,7 +40,13 @@ public class QRCodeController {
     }
 
     @GetMapping("/")
-    public String home() {
+    public String home(Model model) {
+
+        List<Qrcode> qrCodes = qrCodeRepository.findAll();
+
+        model.addAttribute("qrCodes", qrCodes);
+
+
         return "index";
     }
 
@@ -75,10 +82,10 @@ public class QRCodeController {
             qrCodeRepository.save(qrCode);
 
             model.addAttribute("success", "QR code generated successfully!");
-            return "qrcode";
+            return "redirect:/";
         } catch (WriterException | IOException e) {
             model.addAttribute("error", "Failed to generate QR code: " + e.getMessage());
-            return "error";
+            return "redirect:/";
         }
     }
 
@@ -106,10 +113,10 @@ public class QRCodeController {
             qrCodeRepository.save(qrCode);
 
             model.addAttribute("success", "QR code generated successfully!");
-            return "index";
+            return "redirect:/";
         } catch (WriterException | IOException e) {
             model.addAttribute("error", "Failed to generate QR code: " + e.getMessage());
-            return "index";
+            return "redirect:/";
         }
     }
 

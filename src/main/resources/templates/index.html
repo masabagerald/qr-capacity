@@ -15,7 +15,7 @@
   <h1>QR Code Generator</h1>
   <div class="row">
     <div class="col-md-6">
-      <form action="/generatell" enctype="multipart/form-data" class="mb-4" method="post" >
+      <form action="/generate" enctype="multipart/form-data" class="mb-4" method="post" >
         <div class="form-group">
           <label for="text">Text:</label>
           <input type="text" name="text" class="form-control" id="text" placeholder="Enter text" required>
@@ -48,12 +48,18 @@
         <thead>
         <tr>
           <th>Text</th>
-          <th>Size</th>
-          <th>Color</th>
+          <th>Image Path</th>
+         
         </tr>
         </thead>
-        <tbody id="recent-qrcodes">
-        </tbody>
+        <!-- <tbody id="recent-qrcodes">
+        </tbody> -->
+        <tr th:each="qrCode : ${qrCodes}">
+          <td th:text="${qrCode.text}"></td>
+          <td>
+              <img th:src="${qrCode.imagePath}" alt="QR Code" width="100">
+          </td>
+      </tr>
       </table>
     </div>
   </div>
@@ -63,7 +69,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js"></script>
 
-<script>
+<!-- <script>
   $(document).ready(function() {
     var recentQRCodes = [];
 
@@ -113,6 +119,6 @@
 
     displayRecentQRCodes();
   });
-</script>
+</script> -->
 </body>
 </html>
