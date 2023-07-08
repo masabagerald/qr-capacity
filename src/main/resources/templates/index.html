@@ -15,21 +15,28 @@
   <h1>QR Code Generator</h1>
   <div class="row">
     <div class="col-md-6">
-      <form id="qr-form" >
+      <form action="/generatell" enctype="multipart/form-data" class="mb-4" method="post" >
         <div class="form-group">
           <label for="text">Text:</label>
-          <input type="text" class="form-control" id="text" placeholder="Enter text" required>
+          <input type="text" name="text" class="form-control" id="text" placeholder="Enter text" required>
         </div>
         <div class="form-group">
-          <label for="size">Size:</label>
-          <input type="number" class="form-control" id="size" placeholder="Enter size" min="100" max="1000" required>
+          <label for="width">Width:</label>
+          <input type="number" name="width" class="form-control" id="width" placeholder="Enter width" min="100" max="1000" required>
         </div>
         <div class="form-group">
-          <label for="color">Color:</label>
-          <input type="color" class="form-control" id="color" value="#000000" required>
+          <label for="length">Length:</label>
+          <input type="number" name="length" class="form-control" id="length" placeholder="Enter length" min="100" max="1000" required>
         </div>
         <button type="submit" class="btn btn-primary">Generate QR Code</button>
       </form>
+
+      <div th:if="${success}" class="alert alert-success" role="alert">
+        <span th:text="${success}"></span>
+      </div>
+      <div th:if="${error}" class="alert alert-danger" role="alert">
+        <span th:text="${error}"></span>
+      </div>
     </div>
     <div class="col-md-6">
       <div class="qrcode-container">
