@@ -18,6 +18,8 @@ public class Qrcode {
 
     private String imagePath;
 
+    private Integer storageCapacity=0;
+
     // Add getters and setters
     public Long getId() {
         return id;
@@ -41,5 +43,19 @@ public class Qrcode {
 
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
+    }
+
+    public void setStorageCapacity(Integer storageCapacity) {
+
+        if (storageCapacity != null) {
+            // Assign the value to the primitive type property
+            this.storageCapacity = storageCapacity;
+        }
+        
+        
+    }
+
+    public int getStorageCapacity() {
+        return storageCapacity;
     }
 }

@@ -48,6 +48,7 @@
         <thead>
         <tr>
           <th>Text</th>
+          <th>Storage Capacity</th>
           <th>Image Path</th>
          
         </tr>
@@ -56,6 +57,7 @@
         </tbody> -->
         <tr th:each="qrCode : ${qrCodes}">
           <td th:text="${qrCode.text}"></td>
+          <td th:text="${qrCode.storageCapacity}"></td>
           <td>
               <img th:src="${qrCode.imagePath}" alt="QR Code" width="100">
           </td>
