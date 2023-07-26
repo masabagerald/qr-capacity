@@ -1,5 +1,6 @@
 package com.dissertation.qrcapacity.models;
 
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,6 +20,8 @@ public class Qrcode {
     private String imagePath;
 
     private Integer storageCapacity=0;
+
+    private ErrorCorrectionLevel errorCorrectionLevel;
 
     // Add getters and setters
     public Long getId() {
@@ -52,10 +55,23 @@ public class Qrcode {
             this.storageCapacity = storageCapacity;
         }
         
-        
     }
 
     public int getStorageCapacity() {
         return storageCapacity;
+    }
+
+   public void setErrorCorrectionLevel(ErrorCorrectionLevel errorCorrectionLevel) {
+        this.errorCorrectionLevel = errorCorrectionLevel;
+    } 
+
+    
+
+    public ErrorCorrectionLevel getErrorCorrectionLevel() {
+        return errorCorrectionLevel;
+    } 
+
+    public enum ErrorCorrectionLevel {
+        LOW, MEDIUM, QUARTILE, HIGH
     }
 }

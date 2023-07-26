@@ -5,18 +5,22 @@ import com.dissertation.qrcapacity.models.Qrcode;
 import com.dissertation.qrcapacity.repositories.QRCodeRepository;
 import com.dissertation.qrcapacity.services.QRCodeGenerator;
 import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 
 
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import jakarta.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,13 +29,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -52,16 +58,16 @@ public class QRCodeController {
         this.qrCodeRepository = qrCodeRepository;
     }
 
-    @GetMapping("/")
-    public String home(Model model) {
+@GetMapping("/")
+public String home(Model model) {
 
-        List<Qrcode> qrCodes = qrCodeRepository.findAll();
+    List<Qrcode> qrCodes = qrCodeRepository.findAll();
 
-        model.addAttribute("qrCodes", qrCodes);
+    model.addAttribute("qrCodes", qrCodes);
 
 
-        return "index";
-    }
+    return "index";
+}
 
     @GetMapping(value ="/genrateAndDownloadQRCode/{codeText}/{width}/{height}")
     public void download(
@@ -79,8 +85,6 @@ public class QRCodeController {
         try {
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 200, 200);
-
-
 
             // Generate a unique filename for the QR code image
             String filename = UUID.randomUUID().toString() + ".png";
@@ -107,18 +111,36 @@ public class QRCodeController {
     @PostMapping("/generate")
     public String generateQRCode(@RequestParam("text") String text,
                                  @RequestParam("width") int width,
+                               //  @RequestParam("errorCorrectionLevel") Qrcode.ErrorCorrectionLevel errorCorrectionLevel,
+                                 @RequestParam("errorCorrectionLevel") String errorCorrectionLevelParam,
                                  @RequestParam("length") int length,
                                  Model model) {
+
+
         try {
+
+         Qrcode.ErrorCorrectionLevel errorCorrectionLevel = Qrcode.ErrorCorrectionLevel.valueOf(errorCorrectionLevelParam);
+            ErrorCorrectionLevel zxingErrorCorrectionLevel = getErrorCorrectionLevel(errorCorrectionLevel);
+
+
+           // QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            //QRCodeWriter qrCodeWriter = new QRCodeWriterBuilder().setQRCodeErrorCorrection(errorCorrectionLevel).build();
+            //ErrorCorrectionLevel errorCorrectionLevel = ErrorCorrectionLevel.M; // Set the desired error correction level
+
+            Map<EncodeHintType, ErrorCorrectionLevel> hints = new HashMap<>();
+            hints.put(EncodeHintType.ERROR_CORRECTION,  zxingErrorCorrectionLevel);
+
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, length);
+
+            BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, length,hints);
 
             int storageCapacity = calculateStorageCapacity(bitMatrix);
 
             // Generate a unique filename for the QR code image
             String filename = UUID.randomUUID().toString() + ".png";
             //Path imagePath = Path.of(qrCodeImageDirectory, filename);
-            Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+            //Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+            Path imagePath = Paths.get(qrCodeImageDirectory, filename);
 
             // Save the QR code image to the specified directory
             Files.createDirectories(imagePath.getParent());
@@ -130,6 +152,7 @@ public class QRCodeController {
            // qrCode.setImagePath(imagePath.toString());
             qrCode.setStorageCapacity(storageCapacity);
             qrCode.setImagePath("/images/" + filename);
+            qrCode.setErrorCorrectionLevel(errorCorrectionLevel);
             qrCodeRepository.save(qrCode);
 
             model.addAttribute("success", "QR code generated successfully!");
@@ -171,6 +194,51 @@ public class QRCodeController {
         }
         return Math.round((float) bitsCount / (float) modulesCount * 100);
     }
+
+    @GetMapping("/download/{filename:.+}")
+public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
+    try {
+        //Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+        Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+        Resource resource = new UrlResource(imagePath.toUri());
+
+        if (resource.exists() && resource.isReadable()) {
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"");
+
+            // Set the content type to application/octet-stream for binary data
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+        }
+    } catch (MalformedURLException e) {
+        e.printStackTrace();
+    }
+
+    return ResponseEntity.notFound().build();
+}
+
+    private com.google.zxing.qrcode.decoder.ErrorCorrectionLevel getErrorCorrectionLevel(Qrcode.ErrorCorrectionLevel level) {
+        switch (level) {
+            case LOW:
+                return com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.L;
+            case MEDIUM:
+                return com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M;
+            case QUARTILE:
+                return com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.Q;
+            case HIGH:
+                return com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.H;
+            default:
+                throw new IllegalArgumentException("Invalid error correction level");
+        }
+
+    }
+
+
+
 
 
 
