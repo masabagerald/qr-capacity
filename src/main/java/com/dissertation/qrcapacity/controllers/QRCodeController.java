@@ -115,8 +115,6 @@ public String home(Model model) {
                                  @RequestParam("errorCorrectionLevel") String errorCorrectionLevelParam,
                                  @RequestParam("length") int length,
                                  Model model) {
-
-
         try {
 
          Qrcode.ErrorCorrectionLevel errorCorrectionLevel = Qrcode.ErrorCorrectionLevel.valueOf(errorCorrectionLevelParam);
@@ -190,16 +188,17 @@ public String home(Model model) {
                 if (bitMatrix.get(x, y)) {
                     bitsCount++;
                 }
-            }
+            }//
         }
         return Math.round((float) bitsCount / (float) modulesCount * 100);
     }
 
-    @GetMapping("/download/{filename:.+}")
-public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
+    //@GetMapping("/download/{filename:.+}")
+/*public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
     try {
         //Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
-        Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+       // Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+        Path imagePath = Path.of(qrCodeImageDirectory, filename);
         Resource resource = new UrlResource(imagePath.toUri());
 
         if (resource.exists() && resource.isReadable()) {
@@ -219,7 +218,7 @@ public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
     }
 
     return ResponseEntity.notFound().build();
-}
+}*/
 
     private com.google.zxing.qrcode.decoder.ErrorCorrectionLevel getErrorCorrectionLevel(Qrcode.ErrorCorrectionLevel level) {
         switch (level) {
@@ -236,6 +235,27 @@ public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
         }
 
     }
+
+    @GetMapping("/download/{filename:.+}")
+    public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
+        try {
+
+            Path imagePath = Path.of(qrCodeImageDirectory, filename);
+            Resource resource = new UrlResource(imagePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 
 
 

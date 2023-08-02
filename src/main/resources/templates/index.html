@@ -74,7 +74,7 @@
           </td>
           <td th:text="${qrCode.errorCorrectionLevel}"></td>
           <td>
-            <a th:href="@{/download/{filename}(filename=${qrCode.imagePath})}" class="btn btn-primary">Download</a>
+            <a th:href="@{/download/{filename}(filename=${qrCode.imagePath.replace('/images/', '')})}" class="btn btn-primary">Download</a>
         </td>
       </tr>
       </table>
