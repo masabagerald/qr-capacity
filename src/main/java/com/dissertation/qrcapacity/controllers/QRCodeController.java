@@ -114,6 +114,7 @@ public String home(Model model) {
                                //  @RequestParam("errorCorrectionLevel") Qrcode.ErrorCorrectionLevel errorCorrectionLevel,
                                  @RequestParam("errorCorrectionLevel") String errorCorrectionLevelParam,
                                  @RequestParam("length") int length,
+
                                  Model model) {
         try {
 
@@ -125,12 +126,16 @@ public String home(Model model) {
             //QRCodeWriter qrCodeWriter = new QRCodeWriterBuilder().setQRCodeErrorCorrection(errorCorrectionLevel).build();
             //ErrorCorrectionLevel errorCorrectionLevel = ErrorCorrectionLevel.M; // Set the desired error correction level
 
-            Map<EncodeHintType, ErrorCorrectionLevel> hints = new HashMap<>();
+            Map<EncodeHintType, Object> hints = new HashMap<>();
             hints.put(EncodeHintType.ERROR_CORRECTION,  zxingErrorCorrectionLevel);
+
 
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
 
             BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, length,hints);
+
+            // Calculate the QR code version
+            int version = calculateQRCodeVersion(bitMatrix);
 
             int storageCapacity = calculateStorageCapacity(bitMatrix);
 
@@ -151,6 +156,7 @@ public String home(Model model) {
             qrCode.setStorageCapacity(storageCapacity);
             qrCode.setImagePath("/images/" + filename);
             qrCode.setErrorCorrectionLevel(errorCorrectionLevel);
+            qrCode.setVersion(version);
             qrCodeRepository.save(qrCode);
 
             model.addAttribute("success", "QR code generated successfully!");
@@ -255,6 +261,64 @@ public String home(Model model) {
             return ResponseEntity.notFound().build();
         }
     }
+
+    private int calculateQRCodeVersion(BitMatrix bitMatrix) {
+        int version = 1;
+        for (int i = 1; i <= 40; i++) {
+            int capacity = QRCode.getNumDataCodewords(i, ErrorCorrectionLevel.M);
+            if (bitMatrix.getHeight() * bitMatrix.getWidth() <= capacity) {
+                version = i;
+                break;
+            }
+        }
+        return version;
+    }
+
+
+    //calculating data capacity
+
+    private int calculateDataCapacity(BitMatrix bitMatrix, Qrcode.ErrorCorrectionLevel errorCorrectionLevel) {
+        int dataCapacity = 0;
+        int totalDataCodewords = getTotalDataCodewords(bitMatrix);
+        int errorCorrectionCodewords = getErrorCorrectionCodewords(totalDataCodewords, errorCorrectionLevel);
+        if (totalDataCodewords > 0) {
+            dataCapacity = (totalDataCodewords - errorCorrectionCodewords) * 6;
+        }
+        return dataCapacity;
+    }
+
+    private int getTotalDataCodewords(BitMatrix bitMatrix) {
+        int totalDataCodewords = 0;
+        for (int y = 0; y < bitMatrix.getHeight(); y++) {
+            for (int x = 0; x < bitMatrix.getWidth(); x++) {
+                if (bitMatrix.get(x, y)) {
+                    totalDataCodewords++;
+                }
+            }
+        }
+        return totalDataCodewords;
+    }
+
+    private int getErrorCorrectionCodewords(int totalDataCodewords, Qrcode.ErrorCorrectionLevel errorCorrectionLevel) {
+        int errorCorrectionCodewords = 0;
+        switch (errorCorrectionLevel) {
+            case LOW:
+                errorCorrectionCodewords = totalDataCodewords * 7 / 100;
+                break;
+            case MEDIUM:
+                errorCorrectionCodewords = totalDataCodewords * 15 / 100;
+                break;
+            case QUARTILE:
+                errorCorrectionCodewords = totalDataCodewords * 25 / 100;
+                break;
+            case HIGH:
+                errorCorrectionCodewords = totalDataCodewords * 30 / 100;
+                break;
+        }
+        return errorCorrectionCodewords;
+    }
+
+
 
 
 

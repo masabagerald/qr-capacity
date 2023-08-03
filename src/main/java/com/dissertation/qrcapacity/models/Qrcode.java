@@ -23,6 +23,8 @@ public class Qrcode {
 
     private ErrorCorrectionLevel errorCorrectionLevel;
 
+    private int version;
+
     // Add getters and setters
     public Long getId() {
         return id;
@@ -63,7 +65,14 @@ public class Qrcode {
 
    public void setErrorCorrectionLevel(ErrorCorrectionLevel errorCorrectionLevel) {
         this.errorCorrectionLevel = errorCorrectionLevel;
-    } 
+    }
+
+    public  int getVersion(){return version;}
+
+    public  void setVersion(int version){
+        this.version = version;
+    }
+
 
     
 
