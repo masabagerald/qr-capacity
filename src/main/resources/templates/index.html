@@ -75,6 +75,8 @@
           <th>Storage Capacity</th>
           <th>Image Path</th>
           <th>Error Correction Level</th>
+          <th>Data Capacity</th>
+          <th>QR Code Version</th>
           <th>Action</th>
          
         </tr>
@@ -88,6 +90,8 @@
               <img th:src="${qrCode.imagePath}" alt="QR Code" width="100">
           </td>
           <td th:text="${qrCode.errorCorrectionLevel}"></td>
+          <td th:text="${qrCode.dataCapacity}"></td>
+          <td th:text="${qrCode.version}"></td>
           <td>
             <a th:href="@{/download/{filename}(filename=${qrCode.imagePath.replace('/images/', '')})}" class="btn btn-primary">Download</a>
         </td>

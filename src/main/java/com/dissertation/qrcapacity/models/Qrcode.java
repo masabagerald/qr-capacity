@@ -21,9 +21,11 @@ public class Qrcode {
 
     private Integer storageCapacity=0;
 
+    private Integer dataCapacity=0;
+
     private ErrorCorrectionLevel errorCorrectionLevel;
 
-    private int version;
+    private Integer version =0;
 
     // Add getters and setters
     public Long getId() {
@@ -56,9 +58,7 @@ public class Qrcode {
             // Assign the value to the primitive type property
             this.storageCapacity = storageCapacity;
         }
-        
     }
-
     public int getStorageCapacity() {
         return storageCapacity;
     }
@@ -67,9 +67,24 @@ public class Qrcode {
         this.errorCorrectionLevel = errorCorrectionLevel;
     }
 
+    public int getDataCapacity() {
+        return dataCapacity;
+    }
+
+    public  void  setDataCapacity(Integer dataCapacity){
+
+        if (dataCapacity != null) {
+            // Assign the value to the primitive type property
+            this.dataCapacity = dataCapacity;
+        }
+
+
+    }
+
     public  int getVersion(){return version;}
 
     public  void setVersion(int version){
+
         this.version = version;
     }
 

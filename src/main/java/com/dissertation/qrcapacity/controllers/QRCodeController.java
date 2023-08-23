@@ -10,9 +10,10 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-
-
+import com.google.zxing.qrcode.decoder.Mode;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import com.google.zxing.qrcode.encoder.Encoder;
+import com.google.zxing.qrcode.encoder.QRCode;
 import jakarta.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,36 +79,6 @@ public String home(Model model) {
         QRCodeGenerator.generateQRCodeImage(codeText, width, height, QR_CODE_IMAGE_PATH);
     }
 
-    @GetMapping("/generate-qr")
-    public String generateQRCode(@RequestParam("text") String text,
-                                 @RequestParam("image") MultipartFile imageFile,
-                                 Model model) {
-        try {
-            QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 200, 200);
-
-            // Generate a unique filename for the QR code image
-            String filename = UUID.randomUUID().toString() + ".png";
-            Path imagePath = Path.of(qrCodeImageDirectory, filename);
-
-            // Save the QR code image to the specified directory
-            Files.createDirectories(imagePath.getParent());
-            MatrixToImageWriter.writeToPath(bitMatrix, "PNG", imagePath);
-
-            // Save the image file path to the database
-            Qrcode qrCode = new Qrcode();
-            qrCode.setText(text);
-            qrCode.setImagePath(imagePath.toString());
-            qrCodeRepository.save(qrCode);
-
-            model.addAttribute("success", "QR code generated successfully!");
-            return "redirect:/";
-        } catch (WriterException | IOException e) {
-            model.addAttribute("error", "Failed to generate QR code: " + e.getMessage());
-            return "redirect:/";
-        }
-    }
-
     @PostMapping("/generate")
     public String generateQRCode(@RequestParam("text") String text,
                                  @RequestParam("width") int width,
@@ -121,42 +92,59 @@ public String home(Model model) {
          Qrcode.ErrorCorrectionLevel errorCorrectionLevel = Qrcode.ErrorCorrectionLevel.valueOf(errorCorrectionLevelParam);
             ErrorCorrectionLevel zxingErrorCorrectionLevel = getErrorCorrectionLevel(errorCorrectionLevel);
 
-
-           // QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            //QRCodeWriter qrCodeWriter = new QRCodeWriterBuilder().setQRCodeErrorCorrection(errorCorrectionLevel).build();
-            //ErrorCorrectionLevel errorCorrectionLevel = ErrorCorrectionLevel.M; // Set the desired error correction level
+           // BitMatrix improvedBitMatrix = generateImprovedQRCode(text, zxingErrorCorrectionLevel, width, length);
 
             Map<EncodeHintType, Object> hints = new HashMap<>();
             hints.put(EncodeHintType.ERROR_CORRECTION,  zxingErrorCorrectionLevel);
 
+            QRCode qrCodeObject = Encoder.encode(text,zxingErrorCorrectionLevel,hints);
+
+
+
+            int qrCodeVersion = qrCodeObject.getVersion().getVersionNumber();
+
+            // Generate capacity tesselated patterns
+            int[][] tesselatedPatterns = createTesselatedPatterns(qrCodeObject);
+
+            // Merge capacity tesselated patterns with the QR code matrix
+            BitMatrix improvedQRCodeMatrix = merge(bitMatrix, tesselatedPatterns);
 
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
+
 
             BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, length,hints);
 
             // Calculate the QR code version
-            int version = calculateQRCodeVersion(bitMatrix);
 
             int storageCapacity = calculateStorageCapacity(bitMatrix);
+           // int qrCodeVersion = calculateQRCodeVersion(bitMatrix);
+
+            int dataCapacity = calculateDataCapacity(bitMatrix, errorCorrectionLevel);
+
+            // Generate improved QR code with tesselated patterns
+            BitMatrix improvedBitMatrix = generateImprovedQRCode(bitMatrix);
 
             // Generate a unique filename for the QR code image
             String filename = UUID.randomUUID().toString() + ".png";
-            //Path imagePath = Path.of(qrCodeImageDirectory, filename);
-            //Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+
             Path imagePath = Paths.get(qrCodeImageDirectory, filename);
 
             // Save the QR code image to the specified directory
             Files.createDirectories(imagePath.getParent());
-            MatrixToImageWriter.writeToPath(bitMatrix, "PNG", imagePath);
+           // MatrixToImageWriter.writeToPath(bitMatrix, "PNG", imagePath);
+
+            MatrixToImageWriter.writeToPath(improvedBitMatrix, "PNG", imagePath);
 
             // Save the image file path to the database
             Qrcode qrCode = new Qrcode();
             qrCode.setText(text);
            // qrCode.setImagePath(imagePath.toString());
             qrCode.setStorageCapacity(storageCapacity);
+            qrCode.setDataCapacity(dataCapacity);
             qrCode.setImagePath("/images/" + filename);
             qrCode.setErrorCorrectionLevel(errorCorrectionLevel);
-            qrCode.setVersion(version);
+            qrCode.setVersion(qrCodeVersion);
+            qrCode.setVersion(qrCodeVersion);
             qrCodeRepository.save(qrCode);
 
             model.addAttribute("success", "QR code generated successfully!");
@@ -199,33 +187,6 @@ public String home(Model model) {
         return Math.round((float) bitsCount / (float) modulesCount * 100);
     }
 
-    //@GetMapping("/download/{filename:.+}")
-/*public ResponseEntity<Resource> downloadImage(@PathVariable String filename) {
-    try {
-        //Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
-       // Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
-        Path imagePath = Path.of(qrCodeImageDirectory, filename);
-        Resource resource = new UrlResource(imagePath.toUri());
-
-        if (resource.exists() && resource.isReadable()) {
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"");
-
-            // Set the content type to application/octet-stream for binary data
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-        }
-    } catch (MalformedURLException e) {
-        e.printStackTrace();
-    }
-
-    return ResponseEntity.notFound().build();
-}*/
-
     private com.google.zxing.qrcode.decoder.ErrorCorrectionLevel getErrorCorrectionLevel(Qrcode.ErrorCorrectionLevel level) {
         switch (level) {
             case LOW:
@@ -262,21 +223,6 @@ public String home(Model model) {
         }
     }
 
-    private int calculateQRCodeVersion(BitMatrix bitMatrix) {
-        int version = 1;
-        for (int i = 1; i <= 40; i++) {
-            int capacity = QRCode.getNumDataCodewords(i, ErrorCorrectionLevel.M);
-            if (bitMatrix.getHeight() * bitMatrix.getWidth() <= capacity) {
-                version = i;
-                break;
-            }
-        }
-        return version;
-    }
-
-
-    //calculating data capacity
-
     private int calculateDataCapacity(BitMatrix bitMatrix, Qrcode.ErrorCorrectionLevel errorCorrectionLevel) {
         int dataCapacity = 0;
         int totalDataCodewords = getTotalDataCodewords(bitMatrix);
@@ -298,7 +244,6 @@ public String home(Model model) {
         }
         return totalDataCodewords;
     }
-
     private int getErrorCorrectionCodewords(int totalDataCodewords, Qrcode.ErrorCorrectionLevel errorCorrectionLevel) {
         int errorCorrectionCodewords = 0;
         switch (errorCorrectionLevel) {
@@ -317,6 +262,112 @@ public String home(Model model) {
         }
         return errorCorrectionCodewords;
     }
+
+    private int[][] createTesselatedPatterns(BitMatrix bitMatrix) {
+        int n = bitMatrix.getHeight();
+        int[][] tesselatedPatterns = new int[n][n];
+
+        // Generate tesselated patterns
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (i % 2 == 0 && j % 2 == 0) {
+                    tesselatedPatterns[i][j] = 1;
+                } else if (i % 2 == 1 && j % 2 == 1) {
+                    tesselatedPatterns[i][j] = 1;
+                } else {
+                    tesselatedPatterns[i][j] = 0;
+                }
+            }
+        }
+        return tesselatedPatterns;
+    }
+
+    private BitMatrix merge(BitMatrix qrCodeMatrix, int[][] tesselatedPatterns) {
+        int n = qrCodeMatrix.getHeight();
+        BitMatrix improvedQRCodeMatrix = new BitMatrix(n);
+
+        // Merge QR code matrix and tesselated patterns
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (tesselatedPatterns[i][j] == 1) {
+                    improvedQRCodeMatrix.set(j, i);
+                } else {
+                    improvedQRCodeMatrix.set(j, i);
+                }
+            }
+        }
+        return improvedQRCodeMatrix;
+    }
+
+  /*  public static int[][] merge(int[][] qrCode, int[][] tesselatedPatterns) {
+        int n = qrCode.length;
+        int[][] improvedQRCode = new int[n][n];
+
+        BitMatrix qrCodeMatrix = new BitMatrix(n, n); // Create a BitMatrix for the QR code
+        BitMatrix improvedQRCodeMatrix = new BitMatrix(n, n); // Create a BitMatrix for the improved QR code
+
+        // Convert qrCode array to qrCodeMatrix (BitMatrix)
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                qrCodeMatrix.set(j, i, qrCode[i][j] == 1); // Convert int to boolean
+            }
+        }
+
+        // Convert tesselatedPatterns array to improvedQRCodeMatrix (BitMatrix)
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (tesselatedPatterns[i][j] == 1) {
+                    improvedQRCodeMatrix.set(j, i, 1); // Set as integer 1
+                } else {
+                    improvedQRCodeMatrix.set(j, i, qrCodeMatrix.get(j, i) ? 1 : 0); // Convert boolean to integer
+                }
+            }
+        }
+
+        // Convert improvedQRCodeMatrix (BitMatrix) back to int[][] array
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                improvedQRCode[i][j] = improvedQRCodeMatrix.get(j, i) ? 1 : 0; // Convert boolean to int
+            }
+        }
+
+        return improvedQRCode;
+    }*/
+
+    private BitMatrix generateImprovedQRCode(BitMatrix qrCodeMatrix) {
+        int n = qrCodeMatrix.getHeight();
+
+        // Create Capacity Tesselated Patterns
+        int[][] tesselatedPatterns = createTesselatedPatterns(n);
+
+        // Merge Capacity Tesselated Patterns with QR Code
+        int[][] improvedQRCodeArray = merge(qrCodeMatrix, tesselatedPatterns);
+
+        BitMatrix improvedBitMatrix = new BitMatrix(improvedQRCodeArray.length, improvedQRCodeArray[0].length);
+        for (int y = 0; y < improvedBitMatrix.getHeight(); y++) {
+            for (int x = 0; x < improvedBitMatrix.getWidth(); x++) {
+                improvedBitMatrix.set(x, y, improvedQRCodeArray[y][x] == 1);
+            }
+        }
+
+        return improvedBitMatrix;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
