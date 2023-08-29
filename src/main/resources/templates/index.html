@@ -12,13 +12,13 @@
 </head>
 <body>
 <div class="container">
-  <h1>QR Code Generator</h1>
+  <h4>QR Code Generator</h4>
   <div class="row">
     <div class="col-md-4">
       <form action="/generate" enctype="multipart/form-data" class="mb-4" method="post" >
         <div class="form-group">
           <label for="text">Text:</label>
-          <input type="text" name="text" class="form-control" id="text" placeholder="Enter text" required>
+          <textarea name="text" class="form-control" id="text"  required></textarea>
         </div>
         <div class="form-group">
           <label for="width">Width:</label>
@@ -38,6 +38,14 @@
           </select>
         </div>
         <div class="form-group">
+          <label for="algorithm">Algorithm:</label>
+          <select name="algorithm" class="form-control" id="algorithm" required>
+            <option value="TRADITIONAL">Conventional</option>
+            <option value="TESSELATED">Tesselated pattern</option>
+
+          </select>
+        </div>
+       <!-- <div class="form-group">
           <label for="version">QR Code Version:</label>
           <select name="version" class="form-control" id="version" required>
             <option value="1">Version 1</option>
@@ -45,12 +53,12 @@
             <option value="3">Version 3</option>
             <option value="4">Version 4</option>
             <option value="5">Version 5</option>
-            <!-- Add other version options up to the highest supported version -->
-            <!-- Note that QR code versions range from 1 to 40 -->
-            <!-- It's recommended to use only versions 1 to 14 for most purposes -->
-            <!-- Higher versions are less commonly used and have limited compatibility -->
+            &lt;!&ndash; Add other version options up to the highest supported version &ndash;&gt;
+            &lt;!&ndash; Note that QR code versions range from 1 to 40 &ndash;&gt;
+            &lt;!&ndash; It's recommended to use only versions 1 to 14 for most purposes &ndash;&gt;
+            &lt;!&ndash; Higher versions are less commonly used and have limited compatibility &ndash;&gt;
           </select>
-        </div>
+        </div>-->
 
         <button type="submit" class="btn btn-primary">Generate QR Code</button>
       </form>
@@ -72,6 +80,7 @@
         <thead>
         <tr>
           <th>Text</th>
+          <th>Algorithm</th>
           <th>Storage Capacity</th>
           <th>Image Path</th>
           <th>Error Correction Level</th>
@@ -85,6 +94,7 @@
         </tbody> -->
         <tr th:each="qrCode : ${qrCodes}">
           <td th:text="${qrCode.text}"></td>
+          <td th:text="${qrCode.algorithm}"></td>
           <td th:text="${qrCode.storageCapacity}"></td>
           <td>
               <img th:src="${qrCode.imagePath}" alt="QR Code" width="100">
