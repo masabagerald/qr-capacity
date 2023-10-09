@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Code Decoder</title>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* Add custom styles here */
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    #result {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container mt-5">
+  <h2>QR Code Details</h2>
+  <p><strong>Decoded Text:</strong> <span th:text="${result}"></span></p>
+  <p><strong>File Name:</strong> <span th:text="${fileName}"></span></p>
+  <p><strong>File Size:</strong> <span th:text="${fileSize}"></span> bytes</p>
+  <p><strong>File Type:</strong> <span th:text="${fileType}"></span></p>
+  <p><strong>Format:</strong> <span th:text="${format}"></span></p>
+  <p><strong>Error Correction Level:</strong> <span th:text="${errorCorrectionLevel}"></span></p>
+  <p><strong>Time Taken to Scan:</strong> <span th:text="${scanningTime}"></span></p>
+  <p><strong>QR Code Version:</strong> <span th:text="${qrCodeVersion}"></span></p>
+  <p><strong>Resolution:</strong> <span th:text="${resolution}"></span></p>
+
+
+  <a href="/decoder" class="btn btn-secondary mt-3">Go Back</a>
+</div>
+
+
+
+
+</body>
+</html>

@@ -1,2 +1,4 @@
-package com.dissertation.qrcapacity.services;public class HuffMancode {
+package com.dissertation.qrcapacity.services;
+
+public class HuffMancode {
 }

@@ -24,4 +24,5 @@ public class ConventionalQRCodeAlgorithm implements QRCodeGenerationAlgorithm {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
         return qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, length, hints);
     }
+
 }

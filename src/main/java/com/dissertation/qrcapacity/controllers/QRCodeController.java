@@ -2,25 +2,31 @@ package com.dissertation.qrcapacity.controllers;
 
 
 import com.dissertation.qrcapacity.algorithms.ConventionalQRCodeAlgorithm;
+import com.dissertation.qrcapacity.algorithms.HuffmanCodingAlgorithm;
+import com.dissertation.qrcapacity.algorithms.SegmentedSymbolAlgorithm;
 import com.dissertation.qrcapacity.algorithms.TesselatedPatternQRCodeAlgorithm;
 import com.dissertation.qrcapacity.interfaces.QRCodeGenerationAlgorithm;
 import com.dissertation.qrcapacity.models.QRCodeAlgorithm;
 import com.dissertation.qrcapacity.models.Qrcode;
 import com.dissertation.qrcapacity.repositories.QRCodeRepository;
+import com.dissertation.qrcapacity.services.HuffmanNode;
 import com.dissertation.qrcapacity.services.QRCodeGenerator;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
+import com.google.zxing.*;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.QRCodeReader;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import com.google.zxing.qrcode.decoder.Version;
+import com.google.zxing.qrcode.encoder.QRCode;
 import jakarta.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.*;
+//import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -29,21 +35,21 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static com.dissertation.qrcapacity.models.QRCodeAlgorithm.TESSELATED;
-import static com.dissertation.qrcapacity.models.QRCodeAlgorithm.TRADITIONAL;
+import java.util.zip.Deflater;
 
 
 @Controller
@@ -58,27 +64,106 @@ public class QRCodeController {
     private ServletContext servletContext;
     private final ConventionalQRCodeAlgorithm conventionalAlgorithm;
     private final TesselatedPatternQRCodeAlgorithm tesselatedAlgorithm;
+    private final SegmentedSymbolAlgorithm segmentedSymbolAlgorithm;
+    private final HuffmanCodingAlgorithm huffmanCodingAlgorithm;
 
     @Autowired
-    public QRCodeController(QRCodeRepository qrCodeRepository, ConventionalQRCodeAlgorithm conventionalAlgorithm, TesselatedPatternQRCodeAlgorithm tesselatedAlgorithm) {
+    public QRCodeController(QRCodeRepository qrCodeRepository, ConventionalQRCodeAlgorithm conventionalAlgorithm,
+                            TesselatedPatternQRCodeAlgorithm tesselatedAlgorithm, SegmentedSymbolAlgorithm segmentedSymbolAlgorithm,
+                            HuffmanCodingAlgorithm huffmanCodingAlgorithm
+    ) {
 
         this.qrCodeRepository = qrCodeRepository;
         this.conventionalAlgorithm = conventionalAlgorithm;
         this.tesselatedAlgorithm = tesselatedAlgorithm;
+        this.segmentedSymbolAlgorithm = segmentedSymbolAlgorithm;
+        this.huffmanCodingAlgorithm = huffmanCodingAlgorithm;
+    }
+    static class Node {
+        char character;
+        int frequency;
+        Node left, right;
+        Node(char character, int frequency, Node left, Node right) {
+            this.character = character;
+            this.frequency = frequency;
+            this.left = left;
+            this.right = right;
+        }
     }
 
-@GetMapping("/")
-public String home(Model model) {
-
-    List<Qrcode> qrCodes = qrCodeRepository.findAll();
-
-    model.addAttribute("qrCodes", qrCodes);
 
 
-    return "index";
-}
+    @GetMapping("/")
+    public String home(Model model) {
 
-    @GetMapping(value ="/genrateAndDownloadQRCode/{codeText}/{width}/{height}")
+        List<Qrcode> qrCodes = qrCodeRepository.findAll();
+        model.addAttribute("qrCodes", qrCodes);
+        return "index";
+    }
+
+    @GetMapping("/decoder")
+    public String decode() {
+        return "decoder";
+    }
+
+    @PostMapping("/upload")
+    public String uploadFile(@RequestParam("file") MultipartFile file, Model model) {
+        if (file.isEmpty()) {
+            model.addAttribute("message", "Please select a valid file");
+            return "decoder";
+        }
+
+        try {
+            BufferedImage bufferedImage = ImageIO.read(file.getInputStream());
+            LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+            Result result = new MultiFormatReader().decode(bitmap);
+
+            String qrContent = result.getText();
+            System.out.println("Content  is: " + qrContent);
+
+            String huffmanEncodedData = result.getText(); // Assuming the QR code contains Huffman Encoded Data
+
+            Map<Character, String> huffmanCodes = huffmanCodingAlgorithm.getHuffmanCodes(); // You would need to get Huffman Codes either from the QR or from some stored value.
+            System.out.println("codes: " + huffmanCodes);
+            HuffmanNode root = huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes);
+            String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, root);
+
+
+            model.addAttribute("result", qrContent);
+            model.addAttribute("fileName", file.getOriginalFilename());
+            System.out.println("Filename  is: " + file.getOriginalFilename());
+            model.addAttribute("fileSize", file.getSize());
+            model.addAttribute("fileType", file.getContentType());
+            // Adding error correction level to the model
+            Object errorCorrectionLevel = result.getResultMetadata().get(ResultMetadataType.ERROR_CORRECTION_LEVEL);
+            System.out.println("Error Correction Level is: " + result.getResultMetadata().get(ResultMetadataType.ERROR_CORRECTION_LEVEL));
+            model.addAttribute("errorCorrectionLevel", errorCorrectionLevel != null ? errorCorrectionLevel.toString() : "Unknown");
+
+            Instant start = Instant.now(); // Start time
+
+            Instant end = Instant.now(); // End time
+            long timeElapsed = Duration.between(start, end).toMillis(); // Time taken to scan
+            if (timeElapsed == 0)
+                timeElapsed = 1;
+            model.addAttribute("scanningTime", timeElapsed + " ms"); // Adding scanning time to the model
+
+            Integer qrCodeVersion = (Integer) result.getResultMetadata().get(ResultMetadataType.PDF417_EXTRA_METADATA);
+            model.addAttribute("qrCodeVersion", qrCodeVersion != null ? qrCodeVersion.toString() : "Unknown");
+            int width = bufferedImage.getWidth();
+            int height = bufferedImage.getHeight();
+            model.addAttribute("resolution", width + "x" + height);
+
+
+        } catch (Exception e) {
+            model.addAttribute("message", "Could not decode QR Code: " + e.getMessage());
+        }
+
+        return "decoding_details";
+    }
+
+    @GetMapping(value = "/genrateAndDownloadQRCode/{codeText}/{width}/{height}")
     public void download(
             @PathVariable("codeText") String codeText,
             @PathVariable("width") Integer width,
@@ -90,7 +175,7 @@ public String home(Model model) {
     @PostMapping("/generate")
     public String generateQRCode(@RequestParam("text") String text,
                                  @RequestParam("width") int width,
-                               //  @RequestParam("errorCorrectionLevel") Qrcode.ErrorCorrectionLevel errorCorrectionLevel,
+                                 //  @RequestParam("errorCorrectionLevel") Qrcode.ErrorCorrectionLevel errorCorrectionLevel,
                                  @RequestParam("errorCorrectionLevel") String errorCorrectionLevelParam,
                                  @RequestParam("length") int length,
                                  @RequestParam("algorithm") QRCodeAlgorithm algorithmName,
@@ -98,8 +183,20 @@ public String home(Model model) {
                                  Model model) {
 
 
-
         try {
+
+            // Choose the compression level for Deflate (adjust as needed)
+            Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+            byte[] inputBytes = text.getBytes();
+            byte[] compressedBytes = new byte[inputBytes.length];
+
+            deflater.setInput(inputBytes);
+            deflater.finish();
+            int compressedLength = deflater.deflate(compressedBytes);
+
+            // Convert the compressed bytes to a Base64-encoded string
+            String compressedData = Base64.getEncoder().encodeToString(compressedBytes);
+
             QRCodeGenerationAlgorithm algorithm;
             String algorithm_name;
 
@@ -110,8 +207,17 @@ public String home(Model model) {
                     break;
                 case TESSELATED:
                     algorithm = tesselatedAlgorithm;
-                    algorithm_name = "TESSELATED";
+                    algorithm_name = "Tesselated";
                     break;
+                case SEGMENTED_SYMBOL:
+                    algorithm = segmentedSymbolAlgorithm;
+                    algorithm_name = "Segmented Symbol";
+                    break;
+                case HUFFMAN_CODING:
+                    algorithm = huffmanCodingAlgorithm;
+                    algorithm_name = "Huffman Coding";
+                    break;
+
                 default:
                     model.addAttribute("error", "Invalid QR code generation algorithm.");
                     return "redirect:/";
@@ -123,20 +229,23 @@ public String home(Model model) {
 
             BitMatrix bitMatrix = algorithm.generateQRCode(text, width, length, zxingErrorCorrectionLevel);
 
-            // Calculate QR code version
-            int moduleCount = bitMatrix.getHeight() * bitMatrix.getWidth();
-            int version = (moduleCount - 21) / 4 + 1;
+            int size = bitMatrix.getWidth(); // or getHeight(), they are the same
+            System.out.println("Generated QR code width : " + size);
+            System.out.println("Generated QR code height is: " + bitMatrix.getHeight());
+            System.out.println("Algorithm  is: " + algorithm);
+
+            int version = (size - 17) / 4;
 
             // Calculate the properties
             int storageCapacity = calculateStorageCapacity(bitMatrix);
             int dataCapacity = calculateDataCapacity(bitMatrix, errorCorrectionLevel);
-            int qrCodeVersion = calculateQRCodeVersion(bitMatrix);
+
 
             // Save the QR code image to a directory
             String filename = UUID.randomUUID().toString() + ".png";
             Path imagePath = Paths.get(qrCodeImageDirectory, filename);
             Files.createDirectories(imagePath.getParent());
-           // ImageIO.write(qrCodeImage, "PNG", imagePath.toFile());
+            // ImageIO.write(qrCodeImage, "PNG", imagePath.toFile());
             MatrixToImageWriter.writeToPath(bitMatrix, "PNG", imagePath);
 
             // Create a new QRCode entity and save it to the repository (you may need to adjust the code according to your entity structure)
@@ -152,7 +261,7 @@ public String home(Model model) {
 
             model.addAttribute("success", "QR code generated successfully and saved!");
 
-        }catch (WriterException e){
+        } catch (WriterException e) {
             e.printStackTrace();
 
         } catch (IOException e) {
@@ -171,20 +280,20 @@ public String home(Model model) {
 
 
     @GetMapping("/images/{filename:.+}")
-        public ResponseEntity<Resource> serveImage(@PathVariable String filename) {
-            try {
-                Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
-                Resource resource = new UrlResource(imagePath.toUri());
+    public ResponseEntity<Resource> serveImage(@PathVariable String filename) {
+        try {
+            Path imagePath = Path.of(servletContext.getRealPath("/images"), filename);
+            Resource resource = new UrlResource(imagePath.toUri());
 
-                if (resource.exists() && resource.isReadable()) {
-                    return ResponseEntity.ok().body(resource);
-                }
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
+            if (resource.exists() && resource.isReadable()) {
+                return ResponseEntity.ok().body(resource);
             }
-
-            return ResponseEntity.notFound().build();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
         }
+
+        return ResponseEntity.notFound().build();
+    }
 
 
     private int calculateStorageCapacity(BitMatrix bitMatrix) {
@@ -257,6 +366,7 @@ public String home(Model model) {
         }
         return totalDataCodewords;
     }
+
     private int getErrorCorrectionCodewords(int totalDataCodewords, Qrcode.ErrorCorrectionLevel errorCorrectionLevel) {
         int errorCorrectionCodewords = 0;
         switch (errorCorrectionLevel) {
@@ -276,62 +386,11 @@ public String home(Model model) {
         return errorCorrectionCodewords;
     }
 
-    private BitMatrix generateImprovedQRCode(String text, ErrorCorrectionLevel errorCorrectionLevel, int width, int length) throws WriterException {
-        // Generate the original QR code
-        Map<EncodeHintType, Object> hints = new HashMap<>();
-        hints.put(EncodeHintType.ERROR_CORRECTION, errorCorrectionLevel);
 
-        QRCodeWriter qrCodeWriter = new QRCodeWriter();
-        BitMatrix qrCodeBitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, width, length, hints);
 
-        // Convert the QR code's BitMatrix to a 2D integer array
-        int qrCodeSize = qrCodeBitMatrix.getHeight();
-        int[][] qrCodeArray = new int[qrCodeSize][qrCodeSize];
-        for (int y = 0; y < qrCodeSize; y++) {
-            for (int x = 0; x < qrCodeSize; x++) {
-                qrCodeArray[y][x] = qrCodeBitMatrix.get(x, y) ? 1 : 0;
-            }
-        }
 
-        // Create tesselated patterns
-        int[][] tesselatedPatterns = createTesselatedPatterns(qrCodeSize);
 
-        // Merge QR code with tesselated patterns to create the improved QR code array
-        int[][] improvedQRCodeArray = new int[qrCodeSize][qrCodeSize];
-        for (int y = 0; y < qrCodeSize; y++) {
-            for (int x = 0; x < qrCodeSize; x++) {
-                if (tesselatedPatterns[y][x] == 1) {
-                    improvedQRCodeArray[y][x] = 1;
-                } else {
-                    improvedQRCodeArray[y][x] = qrCodeArray[y][x];
-                }
-            }
-        }
 
-        // Convert the improved QR code array back to a BitMatrix
-        BitMatrix improvedBitMatrix = new BitMatrix(qrCodeSize, qrCodeSize);
-        for (int y = 0; y < qrCodeSize; y++) {
-            for (int x = 0; x < qrCodeSize; x++) {
-                improvedBitMatrix.set(x, y);
-            }
-        }
-
-        return improvedBitMatrix;
-    }
-
-    private int[][] createTesselatedPatterns(int size) {
-        int[][] tesselatedPatterns = new int[size][size];
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                if ((i + j) % 2 == 0) {
-                    tesselatedPatterns[i][j] = 1;
-                } else {
-                    tesselatedPatterns[i][j] = 0;
-                }
-            }
-        }
-        return tesselatedPatterns;
-    }
 
 
 

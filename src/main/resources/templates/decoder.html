@@ -2,9 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>$Title$</title>
+  <title>QR Code Decoder</title>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* Add custom styles here */
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    #result {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-$END$
+
+<div class="container mt-5">
+  <h3 class="mb-4">QR Code Decoder</h3>
+  <form method="POST" action="/upload" enctype="multipart/form-data">
+    <div class="form-group">
+      <label for="file">Upload QR Code</label>
+      <input type="file" class="form-control-file" id="file" name="file" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload</button>
+  </form>
+  <div th:if="${message}" class="alert alert-danger mt-3" th:text="${message}"></div>
+
+</div>
+
+
+
+
 </body>
 </html>
