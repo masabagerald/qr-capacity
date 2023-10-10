@@ -33,11 +33,26 @@ public class HuffmanCodingAlgorithm implements QRCodeGenerationAlgorithm {
         // Generate Huffman Codes for each character
         Map<Character, String> huffmanCodes = generateCodes(root);
 
+        // Serialize the Huffman codes into a string
+        StringBuilder serializedCodes = new StringBuilder();
+        for (Map.Entry<Character, String> entry : huffmanCodes.entrySet()) {
+            serializedCodes.append(entry.getKey());
+            serializedCodes.append(':');
+            serializedCodes.append(entry.getValue());
+            serializedCodes.append(',');
+        }
+
         // Encode the input text using the generated Huffman codes
         StringBuilder encodedData = new StringBuilder();
         for (char character : text.toCharArray()) {
             encodedData.append(huffmanCodes.get(character));
         }
+
+        // Append the serialized Huffman codes to the Huffman encoded data
+        //encodedData.insert(0, serializedCodes.toString());
+        encodedData.append('#');
+        encodedData.append(serializedCodes.toString());
+
 
         // Generate the QR Code with the Huffman encoded data
         QRCodeWriter qrCodeWriter = new QRCodeWriter();

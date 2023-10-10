@@ -123,15 +123,28 @@ public class QRCodeController {
             String qrContent = result.getText();
             System.out.println("Content  is: " + qrContent);
 
-            String huffmanEncodedData = result.getText(); // Assuming the QR code contains Huffman Encoded Data
+            String encodedDataWithCodes = result.getText(); // Assuming the QR code contains Huffman Encoded Data
 
-            Map<Character, String> huffmanCodes = huffmanCodingAlgorithm.getHuffmanCodes(); // You would need to get Huffman Codes either from the QR or from some stored value.
+           // Map<Character, String> huffmanCodes = huffmanCodingAlgorithm.getHuffmanCodes(); // You would need to get Huffman Codes either from the QR or from some stored value.
+           // System.out.println("codes: " + huffmanCodes);
+            //HuffmanNode root = huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes);
+            String[] parts = encodedDataWithCodes.split("#", 2);
+            Map<Character, String> huffmanCodes = new HashMap<>();
+
+            for (String part : parts[1].split(",")) {
+                String[] codeParts = part.split(":");
+                char character = codeParts[0].charAt(0);
+                String code = codeParts[1];
+                huffmanCodes.put(character, code);
+            }
             System.out.println("codes: " + huffmanCodes);
-            HuffmanNode root = huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes);
-            String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, root);
+            String huffmanEncodedData = parts[0];
+
+           // String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, root);
+            String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes));
 
 
-            model.addAttribute("result", qrContent);
+            model.addAttribute("result", decodedData);
             model.addAttribute("fileName", file.getOriginalFilename());
             System.out.println("Filename  is: " + file.getOriginalFilename());
             model.addAttribute("fileSize", file.getSize());
@@ -241,8 +254,11 @@ public class QRCodeController {
             int dataCapacity = calculateDataCapacity(bitMatrix, errorCorrectionLevel);
 
 
+            String currentTimestamp = String.valueOf(System.currentTimeMillis());
+            String algorithmNameForFile = algorithmName.toString().toLowerCase().replace(' ', '_');
+
             // Save the QR code image to a directory
-            String filename = UUID.randomUUID().toString() + ".png";
+            String filename = algorithmNameForFile + "_" + currentTimestamp + ".png";
             Path imagePath = Paths.get(qrCodeImageDirectory, filename);
             Files.createDirectories(imagePath.getParent());
             // ImageIO.write(qrCodeImage, "PNG", imagePath.toFile());
