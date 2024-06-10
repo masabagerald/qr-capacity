@@ -113,68 +113,100 @@ public class QRCodeController {
             return "decoder";
         }
 
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null) {
+            model.addAttribute("message", "File name is invalid");
+            return "decoder";
+        }
+
+        String algorithmUsed = extractAlgorithmFromFilename(originalFilename);
+        boolean isHuffmanEncoded = originalFilename.startsWith("huffman_coding");
+
         try {
             BufferedImage bufferedImage = ImageIO.read(file.getInputStream());
-            LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
-            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+            String decodedData;
 
-            Result result = new MultiFormatReader().decode(bitmap);
+            Instant start = Instant.now();
 
-            String qrContent = result.getText();
-            System.out.println("Content  is: " + qrContent);
-
-            String encodedDataWithCodes = result.getText(); // Assuming the QR code contains Huffman Encoded Data
-
-           // Map<Character, String> huffmanCodes = huffmanCodingAlgorithm.getHuffmanCodes(); // You would need to get Huffman Codes either from the QR or from some stored value.
-           // System.out.println("codes: " + huffmanCodes);
-            //HuffmanNode root = huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes);
-            String[] parts = encodedDataWithCodes.split("#", 2);
-            Map<Character, String> huffmanCodes = new HashMap<>();
-
-            for (String part : parts[1].split(",")) {
-                String[] codeParts = part.split(":");
-                char character = codeParts[0].charAt(0);
-                String code = codeParts[1];
-                huffmanCodes.put(character, code);
+            if (isHuffmanEncoded) {
+                decodedData = decodeHuffmanEncodedQRCode(bufferedImage, model);
+            } else {
+                decodedData = decodeStandardQRCode(bufferedImage);
             }
-            System.out.println("codes: " + huffmanCodes);
-            String huffmanEncodedData = parts[0];
 
-           // String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, root);
-            String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes));
-
-
-            model.addAttribute("result", decodedData);
-            model.addAttribute("fileName", file.getOriginalFilename());
-            System.out.println("Filename  is: " + file.getOriginalFilename());
-            model.addAttribute("fileSize", file.getSize());
-            model.addAttribute("fileType", file.getContentType());
-            // Adding error correction level to the model
-            Object errorCorrectionLevel = result.getResultMetadata().get(ResultMetadataType.ERROR_CORRECTION_LEVEL);
-            System.out.println("Error Correction Level is: " + result.getResultMetadata().get(ResultMetadataType.ERROR_CORRECTION_LEVEL));
-            model.addAttribute("errorCorrectionLevel", errorCorrectionLevel != null ? errorCorrectionLevel.toString() : "Unknown");
-
-            Instant start = Instant.now(); // Start time
-
-            Instant end = Instant.now(); // End time
-            long timeElapsed = Duration.between(start, end).toMillis(); // Time taken to scan
-            if (timeElapsed == 0)
-                timeElapsed = 1;
-            model.addAttribute("scanningTime", timeElapsed + " ms"); // Adding scanning time to the model
-
-            Integer qrCodeVersion = (Integer) result.getResultMetadata().get(ResultMetadataType.PDF417_EXTRA_METADATA);
-            model.addAttribute("qrCodeVersion", qrCodeVersion != null ? qrCodeVersion.toString() : "Unknown");
-            int width = bufferedImage.getWidth();
-            int height = bufferedImage.getHeight();
-            model.addAttribute("resolution", width + "x" + height);
-
-
-        } catch (Exception e) {
+            Instant end = Instant.now();
+            long timeElapsed = Duration.between(start, end).toMillis();
+            model.addAttribute("scanningTime", timeElapsed > 0 ? timeElapsed + " ms" : "1 ms"); // Adding scanning time to the model
+            model.addAttribute("algorithmUsed", algorithmUsed);
+            populateModelWithFileDetails(model, file, decodedData, bufferedImage);
+        } catch (IOException e) {
+            model.addAttribute("message", "Error reading the file: " + e.getMessage());
+        } catch (NotFoundException e) {
             model.addAttribute("message", "Could not decode QR Code: " + e.getMessage());
+        } catch (Exception e) {
+            model.addAttribute("message", "An unexpected error occurred: " + e.getMessage());
         }
 
         return "decoding_details";
     }
+
+    private String extractAlgorithmFromFilename(String filename) {
+        int underscoreIndex = filename.indexOf('_');
+        if (underscoreIndex != -1) {
+            return filename.substring(0, underscoreIndex);
+        } else {
+            return "unknown";
+        }
+    }
+
+    private String decodeHuffmanEncodedQRCode(BufferedImage bufferedImage, Model model) throws NotFoundException {
+        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+        Result result = new MultiFormatReader().decode(bitmap);
+
+        String encodedDataWithCodes = result.getText();
+        String[] parts = encodedDataWithCodes.split("#", 2);
+        Map<Character, String> huffmanCodes = new HashMap<>();
+
+        for (String part : parts[1].split(",")) {
+            String[] codeParts = part.split(":");
+            char character = codeParts[0].charAt(0);
+            String code = codeParts[1];
+            huffmanCodes.put(character, code);
+        }
+
+        String huffmanEncodedData = parts[0];
+        String decodedData = huffmanCodingAlgorithm.decodeHuffmanData(huffmanEncodedData, huffmanCodingAlgorithm.reconstructHuffmanTree(huffmanCodes));
+
+        Object errorCorrectionLevel = result.getResultMetadata().get(ResultMetadataType.ERROR_CORRECTION_LEVEL);
+        model.addAttribute("errorCorrectionLevel", errorCorrectionLevel != null ? errorCorrectionLevel.toString() : "Unknown");
+
+
+
+        Integer qrCodeVersion = (Integer) result.getResultMetadata().get(ResultMetadataType.PDF417_EXTRA_METADATA);
+        model.addAttribute("qrCodeVersion", qrCodeVersion != null ? qrCodeVersion.toString() : "Unknown");
+
+        return decodedData;
+    }
+
+    private String decodeStandardQRCode(BufferedImage bufferedImage) throws NotFoundException {
+        LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+        Result result = new MultiFormatReader().decode(bitmap);
+        return result.getText();
+    }
+
+    private void populateModelWithFileDetails(Model model, MultipartFile file, String decodedData, BufferedImage bufferedImage) {
+        model.addAttribute("result", decodedData);
+        model.addAttribute("fileName", file.getOriginalFilename());
+        model.addAttribute("fileSize", file.getSize());
+        model.addAttribute("fileType", file.getContentType());
+
+        int width = bufferedImage.getWidth();
+        int height = bufferedImage.getHeight();
+        model.addAttribute("resolution", width + "x" + height);
+    }
+
 
     @GetMapping(value = "/genrateAndDownloadQRCode/{codeText}/{width}/{height}")
     public void download(

@@ -84,7 +84,7 @@
         <tr>
           <th>Text</th>
           <th>Algorithm</th>
-          <th>Storage Capacity</th>
+<!--          <th>Storage Capacity</th>-->
           <th>Image Path</th>
           <th>Error Correction Level</th>
           <th>Data Capacity</th>
@@ -98,7 +98,7 @@
         <tr th:each="qrCode : ${qrCodes}">
           <td th:text="${qrCode.text}"></td>
           <td th:text="${qrCode.algorithm}"></td>
-          <td th:text="${qrCode.storageCapacity}"></td>
+<!--          <td th:text="${qrCode.storageCapacity}"></td>-->
           <td>
               <img th:src="${qrCode.imagePath}" alt="QR Code" width="100">
           </td>
