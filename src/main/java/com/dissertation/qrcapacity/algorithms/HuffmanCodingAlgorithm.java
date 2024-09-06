@@ -1,5 +1,6 @@
 package com.dissertation.qrcapacity.algorithms;
 
+import com.dissertation.qrcapacity.controllers.QRCodeController;
 import com.dissertation.qrcapacity.interfaces.QRCodeGenerationAlgorithm;
 import com.dissertation.qrcapacity.services.HuffmanNode;
 import com.google.zxing.*;
@@ -7,6 +8,9 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 import java.util.*;
 
@@ -19,6 +23,8 @@ public class HuffmanCodingAlgorithm implements QRCodeGenerationAlgorithm {
         public HuffmanNode left;
         public HuffmanNode right;
     }*/
+
+    private static final Logger logger = LoggerFactory.getLogger(HuffmanCodingAlgorithm.class);
 
     @Override
     public BitMatrix generateQRCode(String text, int width, int height, ErrorCorrectionLevel errorCorrectionLevel) throws WriterException {
@@ -147,6 +153,9 @@ public class HuffmanCodingAlgorithm implements QRCodeGenerationAlgorithm {
     }
 
     public String decodeHuffmanData(String huffmanEncodedData, HuffmanNode root) {
+        System.out.println("inside ecodhuffman daraz");
+        logger.info("inside ecodhuffman daraz");
+
         StringBuilder decodedData = new StringBuilder();
         HuffmanNode currentNode = root;
 

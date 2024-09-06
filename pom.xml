@@ -67,6 +67,8 @@
 			<artifactId>core</artifactId>
 			<version>3.5.2-SNAPSHOT</version>
 		</dependency>
+
+
 	</dependencies>
 
 	<build>
