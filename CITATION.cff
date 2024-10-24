@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Please cite this work as:"
+title: "QR Code Simulator"                                                                                                                                                                
+version: "1.0"
+authors:
+  - family-names: Masaba
+    given-names: Gerald
+repository-code: "https://github.com/masabagerald/qr-capacity"
+url: "https://github.com/masabagerald/qr-capacity"
+date-released: 2024-10-24
