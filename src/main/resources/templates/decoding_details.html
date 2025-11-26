@@ -1,46 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>QR Code Decoder</title>
-  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    /* Add custom styles here */
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-    }
+    <meta charset="UTF-8">
+    <title>QR Code Decoder</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
 
-    #result {
-      border: 1px solid #ccc;
-      padding: 10px;
-      background-color: #f9f9f9;
-      border-radius: 5px;
-    }
-  </style>
+    <style>
+        .container {
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        #result {
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        hr {
+            margin: 1rem 0;
+        }
+    </style>
 </head>
+
 <body>
 
 <div class="container mt-5">
-  <h2>QR Code Details</h2>
-  <p><strong>Decoded Text:</strong> <span th:text="${result}"></span></p>
-  <p><strong>Algorithm Used:</strong> <span th:text="${algorithmUsed}"></span></p>
+    <h2>QR Code Details</h2>
 
-  <p><strong>File Name:</strong> <span th:text="${fileName}"></span></p>
-  <p><strong>File Size:</strong> <span th:text="${fileSize}"></span> bytes</p>
-  <p><strong>File Type:</strong> <span th:text="${fileType}"></span></p>
-  <p><strong>Format:</strong> <span th:text="${format}"></span></p>
-  <p><strong>Error Correction Level:</strong> <span th:text="${errorCorrectionLevel}"></span></p>
-  <p><strong>Time Taken to Scan:</strong> <span th:text="${scanningTime}"></span></p>
-  <p><strong>QR Code Version:</strong> <span th:text="${qrCodeVersion}"></span></p>
-  <p><strong>Resolution:</strong> <span th:text="${resolution}"></span></p>
+    <p><strong>Decoded Text:</strong> <span th:text="${result}"></span></p>
+    <p><strong>Algorithm Used:</strong> <span th:text="${algorithmUsed}"></span></p>
 
+    <hr>
 
-  <a href="/decoder" class="btn btn-secondary mt-3">Go Back</a>
+    <p><strong>File Name:</strong> <span th:text="${fileName}"></span></p>
+    <p><strong>File Size:</strong> <span th:text="${fileSize}"></span> bytes</p>
+    <p><strong>File Type:</strong> <span th:text="${fileType}"></span></p>
+    <p><strong>Format:</strong> <span th:text="${format}"></span></p>
+    <p><strong>Error Correction Level:</strong> <span th:text="${errorCorrectionLevel}"></span></p>
+    <p><strong>QR Code Version:</strong> <span th:text="${qrCodeVersion}"></span></p>
+    <p><strong>Resolution:</strong> <span th:text="${resolution}"></span></p>
+
+    <hr>
+    <h5>Performance Metrics</h5>
+
+    <p><strong>Total Scanning Time:</strong>
+        <span th:text="${scanningTime}"></span> ms
+    </p>
+
+    <p><strong>CPU Time Used:</strong>
+        <span th:text="${cpuTimeMs}"></span> ms
+    </p>
+
+    <p><strong>CPU Usage (% per core):</strong>
+        <span th:text="${cpuUsage}"></span> %
+    </p>
+
+    <p><strong>Memory Usage (Δ):</strong>
+        <span th:text="${memoryUsage}"></span> MB
+    </p>
+
+    <a href="/decoder" class="btn btn-secondary mt-3">Go Back</a>
 </div>
-
-
-
 
 </body>
 </html>

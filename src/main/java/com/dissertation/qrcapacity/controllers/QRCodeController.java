@@ -11,6 +11,7 @@ import com.dissertation.qrcapacity.models.Qrcode;
 import com.dissertation.qrcapacity.repositories.QRCodeRepository;
 import com.dissertation.qrcapacity.services.HuffmanNode;
 import com.dissertation.qrcapacity.services.QRCodeGenerator;
+import com.dissertation.qrcapacity.services.QRProfiler;
 import com.google.zxing.*;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -119,17 +120,11 @@ public class QRCodeController {
             model.addAttribute("message", "Please select a valid file");
             return "decoder";
         }
-
-
-
-
-
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null) {
             model.addAttribute("message", "File name is invalid");
             return "decoder";
         }
-
         String algorithmUsed = extractAlgorithmFromFilename(originalFilename);
         //boolean isHuffmanEncoded = originalFilename.startsWith("huffman_huff");
         boolean isHuffmanEncoded = originalFilename.contains("_huff");
@@ -140,34 +135,69 @@ public class QRCodeController {
         }else{
             algoritm_used = "Conventional Algorithm";
         }
-        
+        // --- inside your controller method, replace existing try{...} block with this ---
         try {
             BufferedImage bufferedImage = ImageIO.read(file.getInputStream());
-            String decodedData;
+            String decodedData = null;
 
-            Instant start = Instant.now();
+            // Helper to format model attributes
+            final java.text.DecimalFormat df2 = new java.text.DecimalFormat("#0.00");
 
             if (isHuffmanEncoded) {
-                decodedData = decodeHuffmanEncodedQRCode(bufferedImage, model);
+                // If decodeHuffmanEncodedQRCode throws checked exceptions, catch and wrap to runtime
+                QRProfiler.ResultWithStats<String> res = QRProfiler.profileSupplier(() -> {
+                    try {
+                        return decodeHuffmanEncodedQRCode(bufferedImage, model); // your method
+                    } catch (Exception ex) {
+                        // rethrow as unchecked so profileSupplier can propagate it
+                        throw new RuntimeException(ex);
+                    }
+                });
+
+                decodedData = res.result;
+                QRProfiler.QRStats stats = res.stats;
+
+                model.addAttribute("scanningTime", df2.format(stats.timeMs) + " ms");
+                model.addAttribute("cpuUsage", df2.format(stats.cpuPercentPerCore)); // normalized %
+                model.addAttribute("cpuTimeMs", df2.format(stats.cpuTimeMs) + " ms"); // robust small-value metric
+                model.addAttribute("memoryUsage", df2.format(stats.memDeltaMB));
+
             } else {
-                decodedData = decodeStandardQRCode(bufferedImage);
+                QRProfiler.ResultWithStats<String> res = QRProfiler.profileSupplier(() -> {
+                    try {
+                        return decodeStandardQRCode(bufferedImage); // your method
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                });
+
+                decodedData = res.result;
+                QRProfiler.QRStats stats = res.stats;
+
+                model.addAttribute("scanningTime", df2.format(stats.timeMs) + " ms");
+                model.addAttribute("cpuUsage", df2.format(stats.cpuPercentPerCore)); // normalized %
+                model.addAttribute("cpuTimeMs", df2.format(stats.cpuTimeMs) + " ms"); // robust small-value metric
+                model.addAttribute("memoryUsage", df2.format(stats.memDeltaMB));
+
             }
+
             logger.info("Decoded data: " + decodedData);
 
-
-            Instant end = Instant.now();
-            long timeElapsed = Duration.between(start, end).toMillis();
-           // model.addAttribute("scanningTime", timeElapsed > 0 ? timeElapsed + " ms" : "1 ms"); // Adding scanning time to the model
-            model.addAttribute("scanningTime", timeElapsed + " ms");
             model.addAttribute("algorithmUsed", algoritm_used);
             populateModelWithFileDetails(model, file, decodedData, bufferedImage);
+
+        } catch (RuntimeException e) {
+            // unwrap and present meaningful message when possible
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            logger.error("Decoding error (runtime wrapper): ", cause);
+            model.addAttribute("message", "Decoding failed: " + cause.getMessage());
         } catch (IOException e) {
             model.addAttribute("message", "Error reading the file: " + e.getMessage());
-        } catch (NotFoundException e) {
-            model.addAttribute("message", "Could not decode QR Code: " + e.getMessage());
         } catch (Exception e) {
             model.addAttribute("message", "An unexpected error occurred: " + e.getMessage());
         }
+
+
 
         return "decoding_details";
     }
